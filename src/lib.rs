@@ -107,7 +107,7 @@ macro_rules! minimum_support {
     ( $x:expr, $a:expr, $( $y:ident ),* ) => {
         match $x {
             $(
-            stringify!($y) => 
+            stringify!($y) =>
                 Some(
                         Box::new(
                             {
@@ -128,30 +128,35 @@ pub fn rbxdom_instance_to_dmrs(
     parent_node_id: &NodeId,
 ) -> Result<NodeId, String> {
     println!("{} {}", inst.name, inst.class.as_str());
-    let mut res: Option<Box<dyn InstanceTrait>> =
-        minimum_support!(inst.class.as_str(),inst.name.clone(),Workspace,Model,RunService,ReplicatedStorage,StarterPlayer);
+    let mut res: Option<Box<dyn InstanceTrait>> = minimum_support!(
+        inst.class.as_str(),
+        inst.name.clone(),
+        Workspace,
+        Model,
+        RunService,
+        ReplicatedStorage,
+        StarterPlayer
+    );
     if res.is_none() {
         res = match inst.class.as_str() {
             "Part" => {
                 let mut part = Part::default();
                 part.set_name(inst.name.clone());
                 // part specific properties
-                Some(
-                    Box::new(part) as Box<dyn InstanceTrait>
-                )
-            },
+                Some(Box::new(part) as Box<dyn InstanceTrait>)
+            }
             "SpawnLocation" => {
                 let mut spawn = SpawnLocation::default();
                 spawn.set_name(inst.name.clone());
-                if let Some(rbx_types::Variant::Bool(b)) = inst.properties.get(&rbx_dom_weak::ustr("Neutral")) {
+                if let Some(rbx_types::Variant::Bool(b)) =
+                    inst.properties.get(&rbx_dom_weak::ustr("Neutral"))
+                {
                     spawn.set_neutral(*b);
                 }
                 // spawnlocation specific properties
-                Some(
-                    Box::new(spawn) as Box<dyn InstanceTrait>
-                )
+                Some(Box::new(spawn) as Box<dyn InstanceTrait>)
             }
-            _ => None
+            _ => None,
         }
     }
     if let Some(mut result) = res {
@@ -159,16 +164,17 @@ pub fn rbxdom_instance_to_dmrs(
             // pvinstance properties
             if let Some(mut basepart) = pvinst.as_mut_basepart() {
                 // basepart properties
-                for (k,v) in inst.properties.clone() {
-                    println!("kv {} {:?}",k,v);
+                for (k, v) in inst.properties.clone() {
+                    println!("kv {} {:?}", k, v);
                 }
             }
         }
-        let nodeid = tree.insert(
-            Node::new(result),
-            id_tree::InsertBehavior::UnderNode(&parent_node_id),
-        )
-        .unwrap();
+        let nodeid = tree
+            .insert(
+                Node::new(result),
+                id_tree::InsertBehavior::UnderNode(&parent_node_id),
+            )
+            .unwrap();
         for child in inst.children().iter().filter_map(|x| dom.get_by_ref(*x)) {
             match rbxdom_instance_to_dmrs(tree, dom, child, &nodeid) {
                 Ok(ins) => {

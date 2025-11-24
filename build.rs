@@ -173,7 +173,7 @@ struct APIDump {
 }
 fn sanitize_for_syntax(s: String) -> String {
     s.replace(&['-', ' ', '(', '/'], "_")
-    .replace(&[')', '"'], "")
+        .replace(&[')', '"'], "")
 }
 fn sanitize_for_indexing(s: String) -> String {
     match s.to_lowercase().as_str() {
@@ -351,20 +351,16 @@ fn main() {
                 "#[derive(Debug,Clone,Default)]\npub struct {} {{\n",
                 member.name
             );
-            let mut class_impl = "".to_string();//format!("impl {}Trait for {0} {{\n", member.name);
+            let mut class_impl = "".to_string(); //format!("impl {}Trait for {0} {{\n", member.name);
             let mut dedup_members: Vec<ClassMember> = member.members.clone();
             dedup_members.sort_by(|a, b| {
-                let newa =                 sanitize_for_syntax(a.name.clone())
-                    .to_lowercase();
-                let newb =                 sanitize_for_syntax(b.name.clone())
-                    .to_lowercase();
+                let newa = sanitize_for_syntax(a.name.clone()).to_lowercase();
+                let newb = sanitize_for_syntax(b.name.clone()).to_lowercase();
                 (&newa).cmp(&newb)
             });
             dedup_members.dedup_by(|a, b| {
-                sanitize_for_syntax(a.name.clone())
-                    .to_lowercase()
-                    ==                 sanitize_for_syntax(b.name.clone())
-                    .to_lowercase()
+                sanitize_for_syntax(a.name.clone()).to_lowercase()
+                    == sanitize_for_syntax(b.name.clone()).to_lowercase()
             });
             // if versioned
             //     .classes
@@ -406,17 +402,19 @@ fn main() {
             let mut ancestors: Vec<String> = Vec::new();
             // let mut class_impl_2: String = "".to_string();
             while let Some(cl) = superclass {
-                println!("{} merging in props from {}",member.name,cl.name);
+                println!("{} merging in props from {}", member.name, cl.name);
                 if cl.name == "Instance" {
                     for mem in cl.members.iter() {
-                        if mem.name!="Parent" && mem.name!="parent" && !members.contains_key(&mem.name)
+                        if mem.name != "Parent"
+                            && mem.name != "parent"
+                            && !members.contains_key(&mem.name)
                             && mem.member_type == ClassMemberType::Property
                         {
                             // if !dedup_members.iter().any(|x| sanitize_for_syntax(x.name.to_lowercase()) == sanitize_for_syntax(mem.name.to_lowercase())) {dedup_members.push(mem.clone())};
                             members.insert(mem.name.clone(), mem);
                         }
                     }
-                }else{
+                } else {
                     for mem in cl.members.iter() {
                         if !members.contains_key(&mem.name)
                             && mem.member_type == ClassMemberType::Property
@@ -428,31 +426,28 @@ fn main() {
                 }
                 ancestors.push(cl.name.clone());
                 // println!("cargo::warning=prevclass {:?}, {}",prevclass,cl.name);
-                class_impl +=
-                    format!("impl {}Trait for {} {{\n", cl.name, member.name).as_str();
+                class_impl += format!("impl {}Trait for {} {{\n", cl.name, member.name).as_str();
                 let mut newmembers = cl.members.clone();
                 newmembers.sort_by(|a, b| {
-                    let newa =                 sanitize_for_syntax(a.name.clone())
-                        .to_lowercase();
-                    let newb =                 sanitize_for_syntax(b.name.clone())
-                        .to_lowercase();
+                    let newa = sanitize_for_syntax(a.name.clone()).to_lowercase();
+                    let newb = sanitize_for_syntax(b.name.clone()).to_lowercase();
                     (&newa).cmp(&newb)
                 });
                 newmembers.dedup_by(|a, b| {
-                    sanitize_for_syntax(a.name.clone())
-                        .to_lowercase()
-                        ==                 sanitize_for_syntax(b.name.clone())
-                        .to_lowercase()
+                    sanitize_for_syntax(a.name.clone()).to_lowercase()
+                        == sanitize_for_syntax(b.name.clone()).to_lowercase()
                 });
                 for prop in newmembers.iter() {
-                    if prop.name == "Instance" || prop.name == "Parent" || prop.name == "ClassName" || prop.value_type.is_none() {
+                    if prop.name == "Instance"
+                        || prop.name == "Parent"
+                        || prop.name == "ClassName"
+                        || prop.value_type.is_none()
+                    {
                         continue;
                     }
                     let propname = sanitize_for_syntax(prop.name.clone());
-                    let typename = typedef_to_typestring(
-                        cl.name.clone(),
-                        prop.value_type.clone().unwrap(),
-                    );
+                    let typename =
+                        typedef_to_typestring(cl.name.clone(), prop.value_type.clone().unwrap());
                     let indexname = sanitize_for_indexing(propname.clone());
                     class_impl += format!(
                         "\tfn {}(&self) /*b4*/ -> &{} {{&self.{}}}\n",
@@ -468,19 +463,21 @@ fn main() {
                     .as_str();
                 }
                 /*if cl.superclass == member.superclass {
-                    class_impl += format!(
-                        "\tfn as_{}(&self) /*firstif*/ -> Option<&dyn {}Trait> {{Some(self)}}\n",
+                class_impl += format!(
+                    "\tfn as_{}(&self) /*firstif*/
+ -> Option<&dyn {}Trait> {{Some(self)}}\n",
                         cl.name.to_lowercase(),
                         cl.name
                     )
                     .as_str();
                     class_impl += format!(
-                        "\tfn as_mut_{}(&mut self) /*firstif*/ -> Option<&mut dyn {}Trait> {{Some(self)}}\n",
+                "\tfn as_mut_{}(&mut self) /*firstif*/
+ -> Option<&mut dyn {}Trait> {{Some(self)}}\n",
                         cl.name.to_lowercase(),
                         cl.name
                     )
                     .as_str();
-                } else */if prevclass.is_some() {
+                } else */                if prevclass.is_some() {
                     let soup = &prevclass.unwrap().name;
                     class_impl += format!(
                         "\tfn as_{}(&self) /*secif*/ -> Option<&dyn {}Trait> {{Some(self)}}\n",
@@ -566,30 +563,29 @@ fn main() {
                 )
                 .as_str();
             }
-                for prop in dedup_members.iter() {
-                    if prop.name == "Instance" || prop.name == "Parent" || prop.value_type.is_none() {
-                        continue;
-                    }
-                    let propname = sanitize_for_syntax(prop.name.clone());
-                    let typename = typedef_to_typestring(
-                        member.name.clone(),
-                        prop.value_type.clone().unwrap(),
-                    );
-                    let indexname = sanitize_for_indexing(propname.clone());
-                    class += format!("\tfn {}(&self) /*a4*/ -> &{};\n", indexname, typename).as_str();
-                    class += format!(
-                        "\tfn set_{}(&mut self, val: {});\n",
-                        propname.to_lowercase(),
-                        typename
-                    )
-                    .as_str();
+            for prop in dedup_members.iter() {
+                if prop.name == "Instance" || prop.name == "Parent" || prop.value_type.is_none() {
+                    continue;
                 }
-                // class += "\n\tfn is_a(&self,s: &str) -> bool;";
-                // class += "\n\tfn classname(&self) -> &'static str;\n";
+                let propname = sanitize_for_syntax(prop.name.clone());
+                let typename =
+                    typedef_to_typestring(member.name.clone(), prop.value_type.clone().unwrap());
+                let indexname = sanitize_for_indexing(propname.clone());
+                class += format!("\tfn {}(&self) /*a4*/ -> &{};\n", indexname, typename).as_str();
+                class += format!(
+                    "\tfn set_{}(&mut self, val: {});\n",
+                    propname.to_lowercase(),
+                    typename
+                )
+                .as_str();
+            }
+            // class += "\n\tfn is_a(&self,s: &str) -> bool;";
+            // class += "\n\tfn classname(&self) -> &'static str;\n";
             class += "}\n";
             class += class_impl.as_str();
             generated += class.as_str();
-}    }
+        }
+    }
     let mut gen2: String = "// impl ObjectTrait {".to_string();
     for subclass in versioned
         .classes
