@@ -1,0 +1,3 @@
+[submodule "scripts/Roblox-Client-Tracker"]
+	path = scripts/Roblox-Client-Tracker
+	url = https://github.com/MaximumADHD/Roblox-Client-Tracker.git
