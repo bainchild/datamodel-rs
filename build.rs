@@ -173,7 +173,7 @@ struct APIDump {
 }
 fn sanitize_for_syntax(s: String) -> String {
     s.replace(&['-', ' ', '(', '/'], "_")
-        .replace(&[')', '"'], "")
+        .replace(&[')', '"', '>', '<'], "")
 }
 fn sanitize_for_indexing(s: String) -> String {
     match s.to_lowercase().as_str() {
@@ -238,7 +238,7 @@ fn main() {
     println!("cargo::rerun-if-changed=scripts/changes");
     let out_dir = var_os("OUT_DIR").unwrap();
     let dest = Path::new(&out_dir).join("versioned_instances.rs");
-    let dest2 = Path::new(&out_dir).join("object_impls.rs");
+    // let dest2 = Path::new(&out_dir).join("root_impls.rs");
     // todo: diff the versions for version compatibility
     let mut latest_version: VersionTag = [0, 0, 0, 0];
     let mut versioned: APIDump = APIDump {
@@ -309,7 +309,7 @@ fn main() {
     .as_str();
     for en in versioned.enums {
         generated += format!(
-            "#[derive(Debug, Default, Clone, EnumString, strum_macros::VariantNames)]\npub(crate) enum Enum{} {{\n",
+            "#[derive(Debug, Default, Clone, Copy, EnumString, strum_macros::VariantNames)]\npub(crate) enum Enum{} {{\n",
             en.name
         )
         .as_str();
@@ -342,10 +342,10 @@ fn main() {
         generated += "}\n";
     }
     let mut classnames = Vec::with_capacity(versioned.classes.len() - 1);
-
+    // let object_not_introduced = !versioned.classes.clone().iter().any(|x| x.name=="Object");
     for member in versioned.classes.clone() {
-        if member.name != "Object" {
-            assert_ne!(member.superclass, "<<<ROOT>>>"); // <<<ROOT>>> classes need to be implemented manually.
+        // if member.superclass != "<<<ROOT>>>" {// <<<ROOT>>> classes should be implemented manually.
+            // assert_ne!(member.superclass, "<<<ROOT>>>"); 
             classnames.push(member.name.clone());
             let mut class = format!(
                 "#[derive(Debug,Clone,Default)]\npub struct {} {{\n",
@@ -403,25 +403,12 @@ fn main() {
             // let mut class_impl_2: String = "".to_string();
             while let Some(cl) = superclass {
                 println!("{} merging in props from {}", member.name, cl.name);
-                if cl.name == "Instance" {
-                    for mem in cl.members.iter() {
-                        if mem.name != "Parent"
-                            && mem.name != "parent"
-                            && !members.contains_key(&mem.name)
-                            && mem.member_type == ClassMemberType::Property
-                        {
-                            // if !dedup_members.iter().any(|x| sanitize_for_syntax(x.name.to_lowercase()) == sanitize_for_syntax(mem.name.to_lowercase())) {dedup_members.push(mem.clone())};
-                            members.insert(mem.name.clone(), mem);
-                        }
-                    }
-                } else {
-                    for mem in cl.members.iter() {
-                        if !members.contains_key(&mem.name)
-                            && mem.member_type == ClassMemberType::Property
-                        {
-                            // if !dedup_members.iter().any(|x| sanitize_for_syntax(x.name.to_lowercase()) == sanitize_for_syntax(mem.name.to_lowercase())) {dedup_members.push(mem.clone())};
-                            members.insert(mem.name.clone(), mem);
-                        }
+                for mem in cl.members.iter() {
+                    if !members.contains_key(&mem.name)
+                        && mem.member_type == ClassMemberType::Property
+                    {
+                        // if !dedup_members.iter().any(|x| sanitize_for_syntax(x.name.to_lowercase()) == sanitize_for_syntax(mem.name.to_lowercase())) {dedup_members.push(mem.clone())};
+                        members.insert(mem.name.clone(), mem);
                     }
                 }
                 ancestors.push(cl.name.clone());
@@ -438,9 +425,8 @@ fn main() {
                         == sanitize_for_syntax(b.name.clone()).to_lowercase()
                 });
                 for prop in newmembers.iter() {
-                    if prop.name == "Instance"
-                        || prop.name == "Parent"
-                        || prop.name == "ClassName"
+                    if prop.name.to_lowercase() == "parent"
+                        || prop.name.to_lowercase() == "classname"
                         || prop.value_type.is_none()
                     {
                         continue;
@@ -492,23 +478,6 @@ fn main() {
                     )
                     .as_str();
                 }
-                if cl.name == "Object" {
-                    class_impl += format!(
-                        "\tfn classname(&self) -> &'static str {{ return {:?} }}\n",
-                        member.name
-                    )
-                    .as_str();
-                    class_impl += format!(
-                        "\tfn is_a(&self,s: &str) -> bool {{ return s=={:?} {}}}\n",
-                        member.name,
-                        ancestors
-                            .iter()
-                            .map(|x| format!("|| s=={:?} ", x))
-                            .collect::<Vec<String>>()
-                            .concat()
-                    )
-                    .as_str();
-                }
                 class_impl += "}\n";
                 if let Some(next_superclass) = class2super.get(&cl.name) {
                     let lastclass = superclass;
@@ -521,16 +490,37 @@ fn main() {
                     break;
                 }
             }
+            class_impl += format!("impl RootTrait for {} {{\n",member.name).as_str();
+            class_impl += format!(
+                "\tfn classname(&self) -> String {{ return {:?}.to_string() }}\n",
+                member.name
+            )
+            .as_str();
+            class_impl += format!(
+                "\tfn is_a(&self,s: &str) -> bool {{ return s=={:?} {}}}\n",
+                member.name,
+                ancestors
+                    .iter()
+                    .map(|x| format!("|| s=={:?} ", x))
+                    .collect::<Vec<String>>()
+                    .concat()
+            )
+            .as_str();
+            let from_root = ancestors.last().unwrap();
+            class_impl += format!("\tfn as_{}(&self) -> Option<&dyn {}Trait> {{Some(self)}}\n",from_root.to_lowercase(),from_root).as_str();
+            class_impl += format!("\tfn as_mut_{}(&mut self) -> Option<&mut dyn {}Trait> {{Some(self)}}\n",from_root.to_lowercase(),from_root).as_str();
+            class_impl += "}\n";
             // class_impl += class_impl_2.as_str();
             for prop in members.iter().map(|x| x.1) {
-                if prop.name == "Instance" || prop.name.to_lowercase() == "classname" {
+                if prop.name.to_lowercase() == "parent"
+                    || prop.name.to_lowercase() == "classname"
+                    || prop.value_type.is_none()
+                {
                     continue;
                 }
                 class += format!(
                     "\t{}: {},\n",
-                    prop.name
-                        .replace(&['-', ' ', '(', '/'], "_")
-                        .replace(&[')', '"'], ""),
+                    sanitize_for_syntax(prop.name.clone()),
                     typedef_to_typestring(member.name.clone(), prop.value_type.clone().unwrap())
                 )
                 .as_str();
@@ -539,7 +529,7 @@ fn main() {
             // class += format!("traitcast::traitcast!(struct {}: {}Trait{});\n",member.name,member.superclass,ancestors).as_str();
             class += format!(
                 "pub trait {}Trait: {}Trait {{\n",
-                member.name, member.superclass
+                member.name, if member.superclass=="<<<ROOT>>>" { "Root".to_string() } else {member.superclass}
             )
             .as_str();
             let mut len: usize = 0;
@@ -564,7 +554,10 @@ fn main() {
                 .as_str();
             }
             for prop in dedup_members.iter() {
-                if prop.name == "Instance" || prop.name == "Parent" || prop.value_type.is_none() {
+                if prop.name.to_lowercase() == "parent"
+                    || prop.name.to_lowercase() == "classname"
+                    || prop.value_type.is_none()
+                {
                     continue;
                 }
                 let propname = sanitize_for_syntax(prop.name.clone());
@@ -584,32 +577,37 @@ fn main() {
             class += "}\n";
             class += class_impl.as_str();
             generated += class.as_str();
-        }
+        // }
     }
-    let mut gen2: String = "// impl ObjectTrait {".to_string();
-    for subclass in versioned
-        .classes
-        .clone()
-        .iter()
-        .filter(|x| x.superclass == "Object")
-    {
-        gen2 += format!(
-            "\n\tfn as_{}(&self) -> Option<&dyn {}Trait> {{None}}",
-            subclass.name.to_lowercase(),
-            subclass.name
-        )
-        .as_str();
-        gen2 += format!(
-            "\n\tfn as_mut_{}(&mut self) -> Option<&mut dyn {}Trait> {{None}}",
-            subclass.name.to_lowercase(),
-            subclass.name
-        )
-        .as_str();
-    }
-    gen2 += "\n\tfn classname() -> &'static str {\"Object\"}";
-    gen2 += "\n\tfn is_a(s: &str) -> bool {return s==\"Object\"}";
-    gen2 += "\n//}";
-    std::fs::write(&dest2, gen2.as_str()).unwrap();
+    // let mut gen2: String = "".to_string();
+    // for member in versioned.classes.clone().iter().filter(|x| x.superclass=="<<<ROOT>>>") {
+    //     gen2 += format!("// impl {}Trait {{",member.name).as_str();
+    //     for subclass in versioned
+    //         .classes
+    //         .clone()
+    //         .iter()
+    //         .filter(|x| x.superclass == member.name)
+    //     {
+    //         gen2 += format!(
+    //             "\n\tfn as_{}(&self) -> Option<&dyn {}Trait> {{None}}",
+    //             subclass.name.to_lowercase(),
+    //             subclass.name
+    //         )
+    //         .as_str();
+    //         gen2 += format!(
+    //             "\n\tfn as_mut_{}(&mut self) -> Option<&mut dyn {}Trait> {{None}}",
+    //             subclass.name.to_lowercase(),
+    //             subclass.name
+    //         )
+    //         .as_str();
+    //     }
+    //     if member.name == "Object" || (member.name == "Instance" && object_not_introduced) {
+    //         gen2 += format!("\n\tfn classname() -> &'static str {{\"{}\"}}",member.name).as_str();
+    //         gen2 += format!("\n\tfn is_a(s: &str) -> bool {{return s==\"{}\"}}",member.name).as_str();
+    //     }
+    //     gen2 += "\n//}";
+    // }
+    // std::fs::write(&dest2, gen2.as_str()).unwrap();
     // generated.push_str(format!(
     //     "#[derive(Debug,Clone,VariantNames)]\npub enum ClassType {{{}}}",
     //     classnames

@@ -6,100 +6,21 @@
 // #[path = "../target/debug/build/datamodel_rs-f2ab66976eeb2e61/out/versioned_instances.rs"]
 pub mod datatypes;
 #[path = "versioned_instances.rs"]
-pub mod instances;
-use id_tree::{Node, NodeId, Tree, TreeBuilder};
-use instances::*;
+pub mod generated;
+use ego_tree::{NodeId, Tree};
+use datatypes::Color3;
+use generated::*;
 use rbx_dom_weak::WeakDom;
 use std::any::Any;
-pub trait ObjectTrait: Any {
-    fn classname(&self) -> &'static str {
-        "Object"
-    }
-    fn is_a(&self, s: &str) -> bool {
-        return s == "Object";
-    }
-    // unsure why you would do this, but it exists if you need it.
-    fn as_unknownobject(&self) -> Option<&dyn UnknownObjectTrait> {
-        None
-    }
-    fn as_mut_unknownobject(&mut self) -> Option<&mut dyn UnknownObjectTrait> {
-        None
-    }
-    // these need to be transplanted from a build script generated file,
-    // cause the subclasses of the root class need to be present for trait traversal,
-    // but objecttrait needs to be here for any object-global functionality
-    fn as_capture(&self) -> Option<&dyn CaptureTrait> {
-        None
-    }
-    fn as_mut_capture(&mut self) -> Option<&mut dyn CaptureTrait> {
-        None
-    }
-    fn as_configsnapshot(&self) -> Option<&dyn ConfigSnapshotTrait> {
-        None
-    }
-    fn as_mut_configsnapshot(&mut self) -> Option<&mut dyn ConfigSnapshotTrait> {
-        None
-    }
-    fn as_editableimage(&self) -> Option<&dyn EditableImageTrait> {
-        None
-    }
-    fn as_mut_editableimage(&mut self) -> Option<&mut dyn EditableImageTrait> {
-        None
-    }
-    fn as_editablemesh(&self) -> Option<&dyn EditableMeshTrait> {
-        None
-    }
-    fn as_mut_editablemesh(&mut self) -> Option<&mut dyn EditableMeshTrait> {
-        None
-    }
-    fn as_executedremotecommand(&self) -> Option<&dyn ExecutedRemoteCommandTrait> {
-        None
-    }
-    fn as_mut_executedremotecommand(&mut self) -> Option<&mut dyn ExecutedRemoteCommandTrait> {
-        None
-    }
-    fn as_instance(&self) -> Option<&dyn InstanceTrait> {
-        None
-    }
-    fn as_mut_instance(&mut self) -> Option<&mut dyn InstanceTrait> {
-        None
-    }
-    fn as_mlsession(&self) -> Option<&dyn MLSessionTrait> {
-        None
-    }
-    fn as_mut_mlsession(&mut self) -> Option<&mut dyn MLSessionTrait> {
-        None
-    }
-    fn as_terrainiterateoperation(&self) -> Option<&dyn TerrainIterateOperationTrait> {
-        None
-    }
-    fn as_mut_terrainiterateoperation(&mut self) -> Option<&mut dyn TerrainIterateOperationTrait> {
-        None
-    }
-    fn as_terrainmodifyoperation(&self) -> Option<&dyn TerrainModifyOperationTrait> {
-        None
-    }
-    fn as_mut_terrainmodifyoperation(&mut self) -> Option<&mut dyn TerrainModifyOperationTrait> {
-        None
-    }
-    fn as_terrainreadoperation(&self) -> Option<&dyn TerrainReadOperationTrait> {
-        None
-    }
-    fn as_mut_terrainreadoperation(&mut self) -> Option<&mut dyn TerrainReadOperationTrait> {
-        None
-    }
-    fn as_terrainwriteoperation(&self) -> Option<&dyn TerrainWriteOperationTrait> {
-        None
-    }
-    fn as_mut_terrainwriteoperation(&mut self) -> Option<&mut dyn TerrainWriteOperationTrait> {
-        None
-    }
-    fn as_webstreamclient(&self) -> Option<&dyn WebStreamClientTrait> {
-        None
-    }
-    fn as_mut_webstreamclient(&mut self) -> Option<&mut dyn WebStreamClientTrait> {
-        None
-    }
+pub trait RootTrait: Any {
+    fn classname(&self) -> String {"RootTrait".to_string()}
+    fn is_a(&self, s: &str) -> bool {return s == "RootTrait";}
+    fn as_unknownobject(&self) -> Option<&dyn UnknownObjectTrait> {None}
+    fn as_mut_unknownobject(&mut self) -> Option<&mut dyn UnknownObjectTrait> {None}
+    fn as_instance(&self) -> Option<&dyn InstanceTrait> {None}
+    fn as_mut_instance(&mut self) -> Option<&mut dyn InstanceTrait> {None}
+    // fn as_object(&self) -> Option<&dyn ObjectTrait> {None}
+    // fn as_mut_object(&mut self) -> Option<&mut dyn ObjectTrait> {None}
 }
 // class & name, all that's needed for a good number of instances you
 // don't want to implement but that still need to exist and contain children
@@ -114,7 +35,7 @@ macro_rules! minimum_support {
                                 let mut temp = $y::default();
                                 temp.set_name($a);
                                 temp
-                        }) as Box<dyn InstanceTrait>,
+                        }) as Box<dyn RootTrait>,
                     )
             ,)*
             _ => None
@@ -122,13 +43,13 @@ macro_rules! minimum_support {
     };
 }
 pub fn rbxdom_instance_to_dmrs(
-    tree: &mut Tree<Box<dyn InstanceTrait>>,
+    tree: &mut Tree<Box<dyn RootTrait>>,
     dom: &WeakDom,
     inst: &rbx_dom_weak::Instance,
-    parent_node_id: &NodeId,
+    parent_node_id: NodeId,
 ) -> Result<NodeId, String> {
-    println!("{} {}", inst.name, inst.class.as_str());
-    let mut res: Option<Box<dyn InstanceTrait>> = minimum_support!(
+    // println!("{} {}", inst.name, inst.class.as_str());
+    let mut res: Option<Box<dyn RootTrait>> = minimum_support!(
         inst.class.as_str(),
         inst.name.clone(),
         Workspace,
@@ -143,7 +64,7 @@ pub fn rbxdom_instance_to_dmrs(
                 let mut part = Part::default();
                 part.set_name(inst.name.clone());
                 // part specific properties
-                Some(Box::new(part) as Box<dyn InstanceTrait>)
+                Some(Box::new(part) as Box<dyn RootTrait>)
             }
             "SpawnLocation" => {
                 let mut spawn = SpawnLocation::default();
@@ -153,35 +74,61 @@ pub fn rbxdom_instance_to_dmrs(
                 {
                     spawn.set_neutral(*b);
                 }
+                if let Some(rbx_types::Variant::Bool(b)) =
+                    inst.properties.get(&rbx_dom_weak::ustr("Enabled"))
+                {
+                    spawn.set_enabled(*b);
+                }
                 // spawnlocation specific properties
-                Some(Box::new(spawn) as Box<dyn InstanceTrait>)
+                Some(Box::new(spawn) as Box<dyn RootTrait>)
             }
             _ => None,
         }
     }
     if let Some(mut result) = res {
-        if let Some(mut pvinst) = result.as_mut_pvinstance() {
-            // pvinstance properties
-            if let Some(mut basepart) = pvinst.as_mut_basepart() {
-                // basepart properties
-                for (k, v) in inst.properties.clone() {
-                    println!("kv {} {:?}", k, v);
+        if let Some(mut instance) = result.as_mut_instance() {
+            // instance properties
+            if let Some(mut pvinst) = instance.as_mut_pvinstance() {
+                // pvinstance properties
+                if let Some(mut basepart) = pvinst.as_mut_basepart() {
+                    // basepart properties
+                    // for (k, v) in inst.properties.clone() {
+                    //     println!("kv {} {:?}", k, v);
+                    // }
+                    if let Some(rbx_types::Variant::Bool(b)) =
+                        inst.properties.get(&rbx_dom_weak::ustr("Anchored"))
+                    {
+                        basepart.set_anchored(*b);
+                    }
+                    if let Some(rbx_types::Variant::Bool(b)) =
+                        inst.properties.get(&rbx_dom_weak::ustr("CanCollide"))
+                    {
+                        basepart.set_cancollide(*b);
+                    }
+                    // velocity
+                    // size
+                    // cframe
+                    // material
+                    if let Some(rbx_types::Variant::Color3uint8(col)) =
+                        inst.properties.get(&rbx_dom_weak::ustr("Color"))
+                    {
+                        basepart.set_color(Color3(col.r as f32,col.g as f32,col.b as f32));
+                    }
                 }
             }
         }
-        let nodeid = tree
-            .insert(
-                Node::new(result),
-                id_tree::InsertBehavior::UnderNode(&parent_node_id),
+        let nodeid = tree.get_mut(parent_node_id).unwrap()
+            .append(
+                result
             )
-            .unwrap();
+            .id();
         for child in inst.children().iter().filter_map(|x| dom.get_by_ref(*x)) {
-            match rbxdom_instance_to_dmrs(tree, dom, child, &nodeid) {
+            match rbxdom_instance_to_dmrs(tree, dom, child, nodeid) {
                 Ok(ins) => {
                     // nodeid
                 }
                 Err(e) => {
-                    println!("suberror {}", e)
+                    // println!("suberror {}", e)
                 }
             }
         }
@@ -191,30 +138,27 @@ pub fn rbxdom_instance_to_dmrs(
     }
 }
 // todo: this but without box(?)
-pub fn rbx_dom_to_tree<'a>(dom: WeakDom) -> Tree<Box<dyn InstanceTrait>> {
-    let mut datamodel = TreeBuilder::new()
-        .with_node_capacity(30)
-        .with_root(Node::new(
-            Box::new(DataModel::default()) as Box<dyn InstanceTrait>
-        ))
-        .build();
+pub fn rbx_dom_to_tree<'a>(dom: WeakDom) -> Tree<Box<dyn RootTrait>> {
+    let mut datamodel = Tree::new(
+            Box::new(DataModel::default()) as Box<dyn RootTrait>
+        );
     assert_eq!(dom.root().class, "DataModel");
     // for (k,v) in dom.root().properties.iter() {
     //     println!("props {} {:?}",k.as_str(),v);
     // }
-    let root_node_id = datamodel.root_node_id().unwrap().clone();
+    let root_node_id = datamodel.root().id();
     for child in dom
         .root()
         .children()
         .iter()
         .filter_map(|x| dom.get_by_ref(*x))
     {
-        match rbxdom_instance_to_dmrs(&mut datamodel, &dom, child, &root_node_id) {
+        match rbxdom_instance_to_dmrs(&mut datamodel, &dom, child, root_node_id) {
             Ok(ins) => {
                 // nodeid
             }
             Err(e) => {
-                println!("error {}", e)
+                // println!("error {}", e)
             }
         }
     }

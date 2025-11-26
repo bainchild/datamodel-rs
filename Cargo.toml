@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-id_tree = "1.8.0"
-mlua = { version = "0.11.4", features = ["luau"] }
+chrono = "0.4.42"
+ego-tree = "0.10.0"
+mlua = { version = "0.11.4", features = ["luau"], optional = true }
 rbx_dom_weak = { git = "https://github.com/rojo-rbx/rbx-dom.git", version = "4.0.0" }
 rbx_types = { git = "https://github.com/rojo-rbx/rbx-dom.git", version = "3.0.0" }
 strum = { version = "0.27.2", features = ["derive"] }
@@ -17,4 +18,9 @@ serde_json = "1.0.145"
 strum = { version = "0.27.2", features = ["derive"] }
 
 [dev-dependencies]
+eframe = "0.33.2"
+egui_ltreeview = "0.6.0"
 rbx_binary = { git = "https://github.com/rojo-rbx/rbx-dom.git" }
+
+[features]
+mlua = ["dep:mlua"]
