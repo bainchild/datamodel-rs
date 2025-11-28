@@ -1,7 +1,9 @@
 [package]
-name = "datamodel_rs"
+name = "datamodel-rs"
 version = "0.1.0"
 edition = "2024"
+license = "Unlicense"
+repository = "https://git.rbx.mx/WorldBloxxingAssociation/datamodel-rs.git"
 
 [dependencies]
 chrono = "0.4.42"
