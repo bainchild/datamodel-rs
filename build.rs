@@ -236,6 +236,7 @@ fn typedef_to_typestring(membername: String, val_type: TypeDef) -> String {
 }
 fn main() {
     println!("cargo::rerun-if-changed=scripts/changes");
+    // std::process::Command::new("git").current_dir("scripts/changes/Roblox-Client-Tracker").args(["pull","--recurse-submodules"]).output().unwrap();
     let out_dir = var_os("OUT_DIR").unwrap();
     let dest = Path::new(&out_dir).join("versioned_instances.rs");
     // let dest2 = Path::new(&out_dir).join("root_impls.rs");
